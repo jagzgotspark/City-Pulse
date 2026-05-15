@@ -214,4 +214,17 @@ def save_pulse_score(city_id: int, data: dict):
             VALUES
                 (:city_id, :timestamp, :score, :weather_score, :air_score, :summary)
         """), {**data, "city_id": city_id})
-        conn.commit()        
+        conn.commit()  
+
+def get_latest_pulse(city_name: str) -> dict | None:
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT p.score, p.weather_score, p.air_score, p.timestamp
+            FROM pulse_scores p
+            JOIN cities c ON p.city_id = c.id
+            WHERE c.name = :city_name
+            ORDER BY p.timestamp DESC
+            LIMIT 1
+        """), {"city_name": city_name})
+        row = result.fetchone()
+        return dict(row._mapping) if row else None      
