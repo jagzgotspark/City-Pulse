@@ -14,7 +14,7 @@ def fetch_weather(city: str)->dict | None:
             "appid": API_KEY,
             "units": "metric"
         }
-        response=requests.get(BASE_URL, params=params, timeout=10)
+        response=requests.get(BASE_URL, params=params, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.Timeout:

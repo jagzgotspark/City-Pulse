@@ -1,28 +1,34 @@
 from src.fetchers.weather import fetch_weather
 from src.fetchers.air_quality import fetch_air_quality
-from src.utils.transform import clean_weather
-from src.utils.database import init_db, save_snapshot
-from src.utils.database import get_recent_snapshots
+from src.utils.transform import clean_weather, clean_air_quality
+from src.utils.database import init_db, get_or_create_city, save_weather_snapshot, save_air_snapshot
+from src.scoring.engine import compute_pulse
 
 init_db()
 
-raw_weather = fetch_weather("Lucknow")
+cities_to_track = ["Lucknow", "Mumbai", "Bengaluru"]
 
-if raw_weather is None:
-    print("Weather fetch failed")
-else:
+for city_name in cities_to_track:
+    print(f"\nProcessing {city_name}...")
+
+    raw_weather = fetch_weather(city_name)
+    if raw_weather is None:
+        print(f"Skipping {city_name}")
+        continue
+
     lat = raw_weather["coord"]["lat"]
     lon = raw_weather["coord"]["lon"]
-    clean = clean_weather(raw_weather)
+
+    city_id = get_or_create_city(city_name, lat, lon)
+
+    weather_data = clean_weather(raw_weather)
+    save_weather_snapshot(city_id, weather_data)
 
     raw_air = fetch_air_quality(lat, lon)
+    air_data = {}
     if raw_air:
-        clean["aqi"] = raw_air["list"][0]["main"]["aqi"]
-    else:
-        clean["aqi"] = None
+        air_data = clean_air_quality(raw_air)
+        save_air_snapshot(city_id, air_data)
 
-    save_snapshot(clean)
-
-recent = get_recent_snapshots("Lucknow", limit=5)
-for snapshot in recent:
-    print(snapshot)
+    pulse = compute_pulse(weather_data, air_data, {"event_count": 0})
+    print(f"{city_name} pulse score: {pulse}")
