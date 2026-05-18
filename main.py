@@ -3,6 +3,7 @@ from src.fetchers.air_quality import fetch_air_quality
 from src.utils.transform import clean_weather, clean_air_quality
 from src.utils.database import init_db, get_or_create_city, save_weather_snapshot, save_air_snapshot
 from src.scoring.engine import compute_pulse
+from src.api.llm import generate_city_summary
 
 init_db()
 
@@ -32,3 +33,13 @@ for city_name in cities_to_track:
 
     pulse = compute_pulse(weather_data, air_data, {"event_count": 0})
     print(f"{city_name} pulse score: {pulse}")
+
+cities_data = [
+    ("Lucknow", {"temperature": 37.99, "condition": "Haze", "aqi": 3, "pulse_score": 29.3}),
+    ("Mumbai", {"temperature": 32.99, "condition": "Haze", "aqi": 1, "pulse_score": 67.0}),
+    ("Bengaluru", {"temperature": 31.82, "condition": "Clouds", "aqi": 2, "pulse_score": 85.5}),
+]
+
+for city_name, data in cities_data:
+    summary = generate_city_summary(city_name, data)
+    print(f"{city_name}: {summary}")
