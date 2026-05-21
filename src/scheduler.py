@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CITIES = ["Lucknow", "Mumbai", "Bengaluru"]
+CITIES = ["Lucknow", "Mumbai", "Bengaluru", "Delhi"]
 
 def collect_city_data(city_name: str):
     logger.info(f"Starting collection for {city_name}")

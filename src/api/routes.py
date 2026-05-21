@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from src.api.llm import generate_city_summary
 from src.api.cache import get_cached, set_cached
+from src.api.city_service import fetch_and_save_city
 
 from src.utils.database import (
     get_all_cities,
@@ -13,6 +14,8 @@ from src.api.models import (
 )
 from fastapi import APIRouter, HTTPException, Query
 
+import logging
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -111,3 +114,33 @@ def get_city_summary(city_name: str):
     summary = generate_city_summary(city_name, data)
     set_cached(f"summary_{city_name}", summary)
     return {"city": city_name, "summary": summary, "cached": False}
+
+@router.get("/search/{city_name}")
+def search_city(city_name: str):
+    # First check if we already have recent data
+    snapshot = get_latest_snapshot(city_name)
+    pulse = get_latest_pulse(city_name)
+
+    if snapshot and pulse:
+        logger.info(f"Returning cached data for {city_name}")
+        return {
+            "city": city_name,
+            "lat": None,
+            "lon": None,
+            "pulse_score": pulse["score"],
+            "temperature": snapshot["temperature"],
+            "condition": snapshot["condition"],
+            "aqi": snapshot["aqi"],
+            "source": "cache"
+        }
+
+    # Not in DB — fetch fresh
+    result = fetch_and_save_city(city_name)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not find city: {city_name}. Check spelling and try again."
+        )
+
+    result["source"] = "fresh"
+    return result
