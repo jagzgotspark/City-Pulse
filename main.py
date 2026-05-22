@@ -5,6 +5,7 @@ from src.utils.database import init_db, get_or_create_city, save_weather_snapsho
 from src.scoring.engine import compute_pulse
 from src.api.llm import generate_city_summary
 from src.utils.database import get_pulse_trend, get_daily_summary, get_city_comparison
+from src.ml.forecast import forecast_city
 
 init_db()
 
@@ -55,3 +56,21 @@ print("\n=== City Comparison ===")
 comparison = get_city_comparison(days=7)
 for row in comparison:
     print(row)
+
+print("\n=== Forecast: Lucknow ===")
+result = forecast_city("Lucknow", hours_ahead=24)
+if result:
+    print(f"Current: {result['current_score']}")
+    print(f"Predicted next hour: {result['predicted_next']}")
+    print(f"Trend: {result['trend']}")
+    print(f"Data points used: {result['data_points_used']}")
+    print(f"Next 3 hours: {result['forecast_24h'][:3]}")
+else:
+    print("Not enough data")
+
+print("\n=== Forecast: Bengaluru ===")
+result = forecast_city("Bengaluru", hours_ahead=24)
+if result:
+    print(f"Current: {result['current_score']}")
+    print(f"Predicted next hour: {result['predicted_next']}")
+    print(f"Trend: {result['trend']}")

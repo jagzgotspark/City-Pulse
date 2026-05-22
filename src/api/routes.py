@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from src.api.llm import generate_city_summary
 from src.api.cache import get_cached, set_cached
 from src.api.city_service import fetch_and_save_city
-
+from src.ml.forecast import forecast_city
 from src.utils.database import (
     get_all_cities,
     get_latest_snapshot,
@@ -178,3 +178,35 @@ def get_comparison(days: int = Query(default=7, ge=1, le=30)):
         "days": days,
         "cities": comparison
     }
+
+@router.get("/forecast/{city_name}")
+def get_forecast(city_name: str):
+    cached = get_cached(f"forecast_{city_name}")
+    if cached:
+        return {**cached, "cached": True}
+
+    result = forecast_city(city_name, hours_ahead=24)
+
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Not enough data to forecast {city_name}. Need at least 10 data points."
+        )
+
+    set_cached(f"forecast_{city_name}", result)
+    return {**result, "cached": False}
+
+@router.get("/forecast")
+def get_all_forecasts():
+    cities = ["Lucknow", "Mumbai", "Bengaluru"]
+    results = []
+    for city in cities:
+        cached = get_cached(f"forecast_{city}")
+        if cached:
+            results.append({**cached, "cached": True})
+            continue
+        result = forecast_city(city, hours_ahead=24)
+        if result:
+            set_cached(f"forecast_{city}", result)
+            results.append({**result, "cached": False})
+    return {"forecasts": results}
