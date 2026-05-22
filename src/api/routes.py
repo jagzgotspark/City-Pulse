@@ -7,7 +7,10 @@ from src.utils.database import (
     get_all_cities,
     get_latest_snapshot,
     get_latest_pulse,
-    get_history
+    get_history,
+    get_pulse_trend,
+    get_daily_summary,
+    get_city_comparison
 )
 from src.api.models import (
     PulseResponse, HistoryResponse, DashboardResponse
@@ -144,3 +147,34 @@ def search_city(city_name: str):
 
     result["source"] = "fresh"
     return result
+@router.get("/trend/{city_name}")
+def get_trend(city_name: str, days: int = Query(default=7, ge=1, le=30)):
+    trend = get_pulse_trend(city_name, days=days)
+    if not trend:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No trend data for {city_name} yet — keep the scheduler running."
+        )
+    return {
+        "city": city_name,
+        "days": days,
+        "data_points": len(trend),
+        "trend": trend
+    }
+
+@router.get("/daily/{city_name}")
+def get_daily(city_name: str, days: int = Query(default=30, ge=1, le=90)):
+    daily = get_daily_summary(city_name, days=days)
+    return {
+        "city": city_name,
+        "days": days,
+        "daily": daily
+    }
+
+@router.get("/comparison")
+def get_comparison(days: int = Query(default=7, ge=1, le=30)):
+    comparison = get_city_comparison(days=days)
+    return {
+        "days": days,
+        "cities": comparison
+    }

@@ -43,3 +43,17 @@ cities_data = [
 for city_name, data in cities_data:
     summary = generate_city_summary(city_name, data)
     print(f"{city_name}: {summary}")
+
+
+from src.utils.database import get_pulse_trend, get_daily_summary, get_city_comparison
+
+print("\n=== Pulse Trend (Lucknow) ===")
+trend = get_pulse_trend("Lucknow", days=7)
+print(f"{len(trend)} hourly data points")
+for row in trend[:3]:
+    print(row)
+
+print("\n=== City Comparison ===")
+comparison = get_city_comparison(days=7)
+for row in comparison:
+    print(row)

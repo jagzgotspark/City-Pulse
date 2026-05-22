@@ -231,4 +231,55 @@ def get_latest_pulse(city_name: str) -> dict | None:
             LIMIT 1
         """), {"city_name": city_name})
         row = result.fetchone()
-        return dict(row._mapping) if row else None      
+        return dict(row._mapping) if row else None   
+
+def get_pulse_trend(city_name: str, days: int = 7) -> list:
+    with engine.connect() as conn:
+        result = conn.execute(text(f"""
+            SELECT
+                DATE_TRUNC('hour', p.timestamp) as hour,
+                AVG(p.score) as avg_score,
+                AVG(p.weather_score) as avg_weather,
+                AVG(p.air_score) as avg_air
+            FROM pulse_scores p
+            JOIN cities c ON p.city_id = c.id
+            WHERE c.name = :city_name
+            AND p.timestamp > NOW() - INTERVAL '{days} days'
+            GROUP BY hour
+            ORDER BY hour ASC
+        """), {"city_name": city_name})
+        return [dict(row._mapping) for row in result]
+
+def get_daily_summary(city_name: str, days: int = 30) -> list:
+    with engine.connect() as conn:
+        result = conn.execute(text(f"""
+            SELECT
+                DATE_TRUNC('day', p.timestamp) as day,
+                AVG(p.score) as avg_score,
+                MAX(p.score) as max_score,
+                MIN(p.score) as min_score
+            FROM pulse_scores p
+            JOIN cities c ON p.city_id = c.id
+            WHERE c.name = :city_name
+            AND p.timestamp > NOW() - INTERVAL '{days} days'
+            GROUP BY day
+            ORDER BY day ASC
+        """), {"city_name": city_name})
+        return [dict(row._mapping) for row in result]
+
+def get_city_comparison(days: int = 7) -> list:
+    with engine.connect() as conn:
+        result = conn.execute(text(f"""
+            SELECT
+                c.name,
+                AVG(p.score) as avg_score,
+                MAX(p.score) as best_score,
+                MIN(p.score) as worst_score,
+                COUNT(p.id) as data_points
+            FROM pulse_scores p
+            JOIN cities c ON p.city_id = c.id
+            WHERE p.timestamp > NOW() - INTERVAL '{days} days'
+            GROUP BY c.name
+            ORDER BY avg_score DESC
+        """))
+        return [dict(row._mapping) for row in result]   
