@@ -4,6 +4,7 @@ from src.utils.transform import clean_weather, clean_air_quality
 from src.utils.database import init_db, get_or_create_city, save_weather_snapshot, save_air_snapshot
 from src.scoring.engine import compute_pulse
 from src.api.llm import generate_city_summary
+from src.utils.database import get_pulse_trend, get_daily_summary, get_city_comparison
 
 init_db()
 
@@ -43,9 +44,6 @@ cities_data = [
 for city_name, data in cities_data:
     summary = generate_city_summary(city_name, data)
     print(f"{city_name}: {summary}")
-
-
-from src.utils.database import get_pulse_trend, get_daily_summary, get_city_comparison
 
 print("\n=== Pulse Trend (Lucknow) ===")
 trend = get_pulse_trend("Lucknow", days=7)
