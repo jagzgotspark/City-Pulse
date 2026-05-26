@@ -16,6 +16,7 @@ from src.api.models import (
     PulseResponse, HistoryResponse, DashboardResponse
 )
 from fastapi import APIRouter, HTTPException, Query
+from src.utils.aqi import pm25_to_aqi, aqi_category
 
 import logging
 logger = logging.getLogger(__name__)
@@ -83,6 +84,11 @@ def get_dashboard():
                 summary = generate_city_summary(city["name"], data)
                 set_cached(f"summary_{city['name']}", summary)
 
+            # Real AQI from PM2.5
+            pm25 = snapshot.get("pm2_5")
+            real_aqi = pm25_to_aqi(pm25)
+            aqi_info = aqi_category(real_aqi)
+
             result.append({
                 "city": city["name"],
                 "lat": city["lat"],
@@ -91,6 +97,9 @@ def get_dashboard():
                 "temperature": snapshot["temperature"],
                 "condition": snapshot["condition"],
                 "aqi": snapshot["aqi"],
+                "real_aqi": real_aqi,
+                "aqi_label": aqi_info["label"],
+                "aqi_color": aqi_info["color"],
                 "summary": summary
             })
     return {"cities": result}
