@@ -17,6 +17,8 @@ from src.api.models import (
 )
 from fastapi import APIRouter, HTTPException, Query
 from src.utils.aqi import pm25_to_aqi, aqi_category
+from sqlalchemy import text
+from src.utils.database import engine
 
 import logging
 logger = logging.getLogger(__name__)
@@ -85,7 +87,16 @@ def get_dashboard():
                 set_cached(f"summary_{city['name']}", summary)
 
             # Real AQI from PM2.5
-            pm25 = snapshot.get("pm2_5")
+            with engine.connect() as conn:
+                air_result = conn.execute(text("""
+                    SELECT pm2_5 FROM air_quality_snapshots a
+                    JOIN cities c ON a.city_id = c.id
+                    WHERE c.name = :city_name
+                    ORDER BY a.timestamp DESC
+                    LIMIT 1
+                """), {"city_name": city["name"]})
+                air_row = air_result.fetchone()
+                pm25 = air_row[0] if air_row else None
             real_aqi = pm25_to_aqi(pm25)
             aqi_info = aqi_category(real_aqi)
 
