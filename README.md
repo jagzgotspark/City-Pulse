@@ -1,65 +1,291 @@
 # 🌆 City Pulse
 
-> Real-time city energy scores powered by multi-source data aggregation and AI
+A real-time city analytics platform that transforms weather, air quality, and event data into a single Pulse Score (0–100), helping users understand how vibrant, comfortable, and active a city feels at any moment.
 
-**Live demo:** https://your-vercel-url.vercel.app  
-**API docs:** https://city-pulse-production-5856.up.railway.app/docs
-
----
-
-## What is it?
-
-City Pulse tracks the real-time "energy" of Indian cities by aggregating 
-weather, air quality, and event data into a single pulse score (0–100). 
-An LLM generates a one-sentence human-readable mood summary for each city, 
-updated every 15 minutes automatically.
+Built using FastAPI, PostgreSQL, React, machine learning forecasting, and AI-generated city mood summaries.
 
 ---
 
-## Architecture
+## 🚀 Live Demo
 
-Data Sources → Python Ingestion Pipeline → PostgreSQL → FastAPI → React
+**Frontend:** https://project-s9n4g.vercel.app
 
-- **Ingestion:** APScheduler fetches from 3 APIs every 15 minutes
-- **Scoring:** Weighted algorithm combining weather, air quality, and events
-- **API:** FastAPI serves 5 REST endpoints with Pydantic validation
-- **Summaries:** Groq (Llama3) generates city mood summaries with 30min caching
-- **Frontend:** React with Recharts visualisations, auto-refreshes every 60s
+**Backend API:** https://city-pulse-production-5856.up.railway.app
 
 ---
 
-## Tech Stack
+## ✨ Features
 
-**Backend:** Python, FastAPI, SQLAlchemy, PostgreSQL, APScheduler  
-**Frontend:** React, Recharts, Axios  
-**AI:** Groq API (Llama3-8b)  
-**Data:** OpenWeatherMap, PredictHQ, OpenWeatherMap Air Pollution  
-**Deploy:** Railway (backend + DB), Vercel (frontend)
-
----
-
-## Scoring Algorithm
-
-Pulse score is a weighted combination of three sub-scores:
-
-- **Weather (X%):** Scores temperature comfort, humidity, wind, sky condition
-- **Air Quality (X%):** Maps AQI 1–5 to 0–100, heavily penalises AQI 4–5
-- **Events (X%):** More active events = higher city energy
-
-[Write your actual weights and logic here]
+- Real-time weather monitoring
+- Air quality tracking and AQI analysis
+- Event density monitoring
+- Custom Pulse Score algorithm
+- AI-generated city mood summaries using Llama 3
+- Historical trend analysis
+- 24-hour forecasting with Facebook Prophet
+- Interactive city search
+- Automated data collection every 15 minutes
+- PostgreSQL time-series storage
 
 ---
 
-## Running Locally
+## 🏗️ System Architecture
 
-\`\`\`bash
-git clone https://github.com/jagzgotspark/City-Pulse
+```text
+                    ┌──────────────────┐
+                    │  OpenWeather API │
+                    └─────────┬────────┘
+                              │
+                    ┌─────────▼────────┐
+                    │ Air Quality API  │
+                    └─────────┬────────┘
+                              │
+                    ┌─────────▼────────┐
+                    │   PredictHQ API  │
+                    └─────────┬────────┘
+                              │
+
+                    ┌─────────▼────────┐
+                    │ APScheduler Job  │
+                    │ (Every 15 mins)  │
+                    └─────────┬────────┘
+                              │
+
+                    ┌─────────▼────────┐
+                    │ Data Processing  │
+                    │ & Transformation │
+                    └─────────┬────────┘
+                              │
+
+                    ┌─────────▼────────┐
+                    │ Pulse Score      │
+                    │ Calculation      │
+                    └─────────┬────────┘
+                              │
+
+                    ┌─────────▼────────┐
+                    │ PostgreSQL       │
+                    │ Time-Series DB   │
+                    └─────────┬────────┘
+                              │
+
+                    ┌─────────▼────────┐
+                    │ FastAPI Backend  │
+                    └─────────┬────────┘
+                              │
+
+          ┌───────────────────▼───────────────────┐
+          │ React Dashboard + Charts + Maps + AI │
+          └───────────────────────────────────────┘
+```
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- APScheduler
+
+### Frontend
+
+- React
+- Axios
+- Recharts
+- Leaflet
+
+### AI & Machine Learning
+
+- Groq API (Llama 3)
+- Facebook Prophet
+
+### Deployment
+
+- Railway
+- Vercel
+
+---
+
+## 📊 Pulse Score Algorithm
+
+The Pulse Score is a weighted combination of multiple city indicators.
+
+### Weather Score
+
+Factors considered:
+
+- Temperature comfort
+- Humidity
+- Wind speed
+- Weather conditions
+
+### Air Quality Score
+
+Factors considered:
+
+- AQI
+- PM2.5 concentration
+- Pollution severity
+
+### Event Score
+
+Factors considered:
+
+- Number of local events
+- City activity level
+
+### Final Score
+
+```text
+Pulse Score =
+(Weather Score × Weight)
++ (Air Quality Score × Weight)
++ (Event Score × Weight)
+```
+
+Scores are normalized and constrained between 0 and 100.
+
+---
+
+## 🤖 AI Mood Summaries
+
+City Pulse uses Llama 3 through the Groq API to generate natural-language descriptions of a city's current atmosphere.
+
+Example:
+
+> "Lucknow feels lively this evening with pleasant weather, moderate air quality, and several ongoing events contributing to a vibrant city vibe."
+
+To reduce latency and API costs, generated summaries are cached for 30 minutes.
+
+---
+
+## 📈 Forecasting
+
+The platform uses Facebook Prophet to forecast city Pulse Scores for the next 24 hours.
+
+Features:
+
+- Daily seasonality detection
+- Confidence intervals
+- Historical trend learning
+- Cached forecasts for faster responses
+
+---
+
+## 🗄 Database Schema
+
+### cities
+
+Stores tracked cities.
+
+### weather_snapshots
+
+Stores weather observations collected every 15 minutes.
+
+### air_quality_snapshots
+
+Stores AQI and pollutant measurements.
+
+### events_snapshots
+
+Stores event activity data.
+
+### pulse_scores
+
+Stores calculated Pulse Scores and AI summaries.
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|----------|----------|-------------|
+| GET | `/api/dashboard` | All tracked cities |
+| GET | `/api/pulse/{city}` | Latest city data |
+| GET | `/api/search/{city}` | Search and save a city |
+| GET | `/api/trend/{city}` | Historical trends |
+| GET | `/api/history/{city}` | Weather and AQI history |
+| GET | `/api/daily/{city}` | Daily summary |
+| GET | `/api/comparison` | City rankings |
+| GET | `/api/forecast/{city}` | 24-hour forecast |
+| GET | `/api/forecast` | Forecasts for all cities |
+
+---
+
+## ⚙️ Local Setup
+
+### Clone Repository
+
+```bash
+git clone https://github.com/jagzgotspark/City-Pulse.git
 cd City-Pulse
-python3 -m venv venv
+```
+
+### Create Virtual Environment
+
+```bash
+python -m venv venv
 source venv/bin/activate
+```
+
+### Install Dependencies
+
+```bash
 pip install -r requirements.txt
-cp .env.example .env  # add your API keys
-python3 main.py       # single collection run
-python3 -m src.scheduler  # continuous pipeline
-uvicorn src.api.main:app --reload  # start API
-\`\`\`
+```
+
+### Configure Environment Variables
+
+Create a `.env` file:
+
+```env
+OPENWEATHER_API_KEY=your_key
+PREDICTHQ_TOKEN=your_token
+GROQ_API_KEY=your_key
+DATABASE_URL=your_database_url
+```
+
+### Start Backend
+
+```bash
+uvicorn src.api.main:app --reload
+```
+
+### Start Scheduler
+
+```bash
+python3 -m src.scheduler
+```
+
+---
+
+## 🎯 Engineering Challenges Solved
+
+- Designed a weighted scoring algorithm that models city livability and activity
+- Built an automated multi-source ingestion pipeline
+- Managed time-series analytics using PostgreSQL
+- Integrated AI-generated summaries while minimizing latency through caching
+- Implemented machine learning forecasting on continuously collected city data
+- Built on-demand city discovery and persistence
+
+---
+
+## 📌 Future Improvements
+
+- Neighborhood-level analytics
+- More environmental indicators
+- User personalization
+- Advanced forecasting models
+- Real-time alerting system
+
+---
+
+## 👩‍💻 Author
+
+**Jagriti Singh**
+
+Built as a full-stack data engineering, analytics, and machine learning project focused on transforming raw city data into meaningful real-time insights.
