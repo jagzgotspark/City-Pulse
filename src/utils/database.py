@@ -69,6 +69,28 @@ def init_db():
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS neighbourhood_snapshots (
+                id SERIAL PRIMARY KEY,
+                city_name VARCHAR(100) NOT NULL,
+                neighbourhood VARCHAR(100) NOT NULL,
+                lat FLOAT NOT NULL,
+                lon FLOAT NOT NULL,
+                timestamp TIMESTAMPTZ NOT NULL,
+                temperature FLOAT,
+                humidity INTEGER,
+                condition VARCHAR(50),
+                wind_speed FLOAT,
+                aqi INTEGER,
+                pm2_5 FLOAT,
+                pulse_score FLOAT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_neighbourhood_city_time
+            ON neighbourhood_snapshots (city_name, timestamp DESC)
+        """))
         conn.commit()
         print("Database initialised with new schema")
 
@@ -170,45 +192,6 @@ def get_all_cities() -> list:
         result = conn.execute(text("SELECT name, lat, lon FROM cities"))
         return [dict(row._mapping) for row in result]
 
-def get_or_create_city(name: str, lat: float, lon: float) -> int:
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT id FROM cities WHERE name = :name
-        """), {"name": name})
-        row = result.fetchone()
-
-        if row:
-            return row[0]
-
-        result = conn.execute(text("""
-            INSERT INTO cities (name, lat, lon)
-            VALUES (:name, :lat, :lon)
-            RETURNING id
-        """), {"name": name, "lat": lat, "lon": lon})
-        conn.commit()
-        return result.fetchone()[0]
-
-def save_weather_snapshot(city_id: int, data: dict):
-    with engine.connect() as conn:
-        conn.execute(text("""
-            INSERT INTO weather_snapshots
-                (city_id, timestamp, temperature, feels_like,
-                 humidity, condition, wind_speed, visibility)
-            VALUES
-                (:city_id, :timestamp, :temperature, :feels_like,
-                 :humidity, :condition, :wind_speed, :visibility)
-        """), {**data, "city_id": city_id})
-        conn.commit()
-
-def save_air_snapshot(city_id: int, data: dict):
-    with engine.connect() as conn:
-        conn.execute(text("""
-            INSERT INTO air_quality_snapshots
-                (city_id, timestamp, aqi, pm2_5, pm10, co)
-            VALUES
-                (:city_id, :timestamp, :aqi, :pm2_5, :pm10, :co)
-        """), {**data, "city_id": city_id})
-        conn.commit()
        
 def save_pulse_score(city_id: int, data: dict):
     with engine.connect() as conn:
@@ -283,3 +266,32 @@ def get_city_comparison(days: int = 7) -> list:
             ORDER BY avg_score DESC
         """))
         return [dict(row._mapping) for row in result]   
+    
+def save_neighbourhood_snapshot(data: dict):
+    with engine.connect() as conn:
+        conn.execute(text("""
+            INSERT INTO neighbourhood_snapshots
+                (city_name, neighbourhood, lat, lon, timestamp,
+                 temperature, humidity, condition, wind_speed,
+                 aqi, pm2_5, pulse_score)
+            VALUES
+                (:city_name, :neighbourhood, :lat, :lon, :timestamp,
+                 :temperature, :humidity, :condition, :wind_speed,
+                 :aqi, :pm2_5, :pulse_score)
+        """), data)
+        conn.commit()
+
+
+def get_neighbourhood_data(city_name: str) -> list:
+    """Returns the latest snapshot per neighbourhood for a city."""
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT DISTINCT ON (neighbourhood)
+                neighbourhood, lat, lon, timestamp,
+                temperature, humidity, condition,
+                wind_speed, aqi, pm2_5, pulse_score
+            FROM neighbourhood_snapshots
+            WHERE city_name = :city_name
+            ORDER BY neighbourhood, timestamp DESC
+        """), {"city_name": city_name})
+        return [dict(row._mapping) for row in result]
