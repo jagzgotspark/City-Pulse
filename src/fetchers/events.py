@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("PREDICTHQ_TOKEN")
-BASE_URL = "https://api.predicthq.com/v1/events/"
+API_KEY = os.getenv("TICKETMASTER_API_KEY")
+BASE_URL = "https://app.ticketmaster.com/discovery/v2/events.json"
 
 CITY_COORDS = {
-    "Lucknow": (26.85, 80.95),
-    "Mumbai": (19.08, 72.88),
-    "Bengaluru": (12.97, 77.59)
+    "Lucknow":    (26.85, 80.95),
+    "Mumbai":     (19.08, 72.88),
+    "Bengaluru":  (12.97, 77.59),
+    "Delhi":      (28.61, 77.23),
 }
 
 def fetch_event_density(city: str) -> dict | None:
@@ -22,23 +23,19 @@ def fetch_event_density(city: str) -> dict | None:
     lat, lon = CITY_COORDS[city]
 
     try:
-        headers = {"Authorization": f"Bearer {TOKEN}"}
         params = {
-            "within": f"50km@{lat},{lon}",
-            "active.gte": date.today().strftime("%Y-%m-%d"),
-            "limit": "1"
+            "apikey": API_KEY,
+            "latlong": f"{lat},{lon}",
+            "radius": "50",
+            "unit": "km",
+            "startDateTime": f"{date.today().strftime('%Y-%m-%d')}T00:00:00Z",
+            "size": "1"
         }
-        response = requests.get(
-            BASE_URL,
-            headers=headers,
-            params=params,
-            timeout=10
-        )
+        response = requests.get(BASE_URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        return {
-            "event_count": data.get("count", 0)
-        }
+        count = data.get("page", {}).get("totalElements", 0)
+        return {"event_count": count}
     except requests.exceptions.Timeout:
         print(f"Events request timed out for {city}")
         return None
