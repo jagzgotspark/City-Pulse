@@ -7,6 +7,7 @@ import logging
 from src.fetchers.weather import fetch_weather
 from src.fetchers.air_quality import fetch_air_quality
 from src.fetchers.events import fetch_event_density
+from src.fetchers.neighbourhood import collect_all_neighbourhoods
 from src.utils.transform import clean_weather, clean_air_quality
 from src.utils.database import (
     init_db, get_or_create_city,
@@ -65,7 +66,9 @@ def collect_all_cities():
     logger.info(f"=== Collection run started at {datetime.now(timezone.utc)} ===")
     for city in CITIES:
         collect_city_data(city)
+    collect_all_neighbourhoods()
     logger.info("=== Collection run complete ===")
+    
 
 def run_scheduler():
     """Called from FastAPI startup — runs in a daemon thread."""
