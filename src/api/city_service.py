@@ -11,6 +11,7 @@ from src.utils.database import (
     get_latest_pulse
 )
 from src.scoring.engine import compute_pulse
+from src.fetchers.weather import fetch_weather_latlon, geocode_city
 from datetime import datetime, timezone
 import logging
 
@@ -19,14 +20,16 @@ logger = logging.getLogger(__name__)
 def fetch_and_save_city(city_name: str) -> dict | None:
     logger.info(f"On-demand fetch for {city_name}")
 
-    raw_weather = fetch_weather(city_name)
+    geo = geocode_city(city_name)
+    if geo is None:
+        logger.warning(f"Geocode failed for {city_name}")
+        return None
+
+    lat, lon, actual_name = geo
+    raw_weather = fetch_weather_latlon(lat, lon)
     if raw_weather is None:
         logger.warning(f"Weather fetch failed for {city_name}")
         return None
-
-    lat = raw_weather["coord"]["lat"]
-    lon = raw_weather["coord"]["lon"]
-    actual_name = raw_weather["name"]
 
     city_id = get_or_create_city(actual_name, lat, lon)
 

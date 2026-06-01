@@ -27,6 +27,32 @@ def fetch_weather(city: str)->dict | None:
         print(f"Unexpected error: {e}")
         return None
 
+GEOCODE_URL = "http://api.openweathermap.org/geo/1.0/direct"
+
+def geocode_city(city: str) -> tuple | None:
+    """Returns (lat, lon, actual_name) for the best India match."""
+    try:
+        params = {
+            "q": f"{city},IN",
+            "limit": 5,
+            "appid": API_KEY
+        }
+        response = requests.get(GEOCODE_URL, params=params, timeout=10)
+        response.raise_for_status()
+        results = response.json()
+        if not results:
+            # fallback — try without country code
+            params["q"] = city
+            response = requests.get(GEOCODE_URL, params=params, timeout=10)
+            results = response.json()
+        if not results:
+            return None
+        top = results[0]
+        return (top["lat"], top["lon"], top.get("name", city))
+    except Exception as e:
+        print(f"Geocode error for {city}: {e}")
+        return None
+
 CITY_GRIDS = {
     "Lucknow": [
         {"name": "Hazratganj",   "lat": 26.8467, "lon": 80.9462},
