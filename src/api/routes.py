@@ -10,7 +10,8 @@ from src.utils.database import (
     get_history,
     get_pulse_trend,
     get_daily_summary,
-    get_city_comparison
+    get_city_comparison,
+    get_neighbourhood_data 
 )
 from src.api.models import (
     PulseResponse, HistoryResponse, DashboardResponse
@@ -231,3 +232,16 @@ def get_all_forecasts():
             set_cached(f"forecast_{city}", result)
             results.append({**result, "cached": False})
     return {"forecasts": results}
+
+@router.get("/neighbourhood/{city_name}")
+def get_neighbourhood(city_name: str):
+    data = get_neighbourhood_data(city_name)
+    if not data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No neighbourhood data for {city_name} yet — wait for next scheduler run."
+        )
+    return {
+        "city": city_name,
+        "neighbourhoods": data
+    }
