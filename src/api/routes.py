@@ -145,11 +145,12 @@ def search_city(city_name: str):
     pulse = get_latest_pulse(city_name)
 
     if snapshot and pulse:
-        logger.info(f"Returning cached data for {city_name}")
+        city_meta = next((c for c in get_all_cities() if c["name"] == city_name), {})
         return {
             "city": city_name,
-            "lat": None,
-            "lon": None,
+            "lat": city_meta.get("lat"),
+            "lon": city_meta.get("lon"),
+
             "pulse_score": pulse["score"],
             "temperature": snapshot["temperature"],
             "condition": snapshot["condition"],
