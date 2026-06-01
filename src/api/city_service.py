@@ -1,4 +1,4 @@
-from src.fetchers.weather import fetch_weather
+from src.fetchers.weather import fetch_weather, fetch_weather_latlon, geocode_city
 from src.fetchers.air_quality import fetch_air_quality
 from src.fetchers.events import fetch_event_density
 from src.utils.transform import clean_weather, clean_air_quality
@@ -11,7 +11,7 @@ from src.utils.database import (
     get_latest_pulse
 )
 from src.scoring.engine import compute_pulse
-from src.fetchers.weather import fetch_weather_latlon, geocode_city
+
 from datetime import datetime, timezone
 import logging
 
