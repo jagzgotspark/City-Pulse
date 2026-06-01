@@ -12,6 +12,7 @@ from src.utils.database import (
     init_db, get_or_create_city,
     save_weather_snapshot, save_air_snapshot
 )
+from apscheduler.schedulers.background import BackgroundScheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,16 +67,20 @@ def collect_all_cities():
         collect_city_data(city)
     logger.info("=== Collection run complete ===")
 
-def start_scheduler():
-    init_db()
+def run_scheduler():
+    """Called from FastAPI startup — runs in a daemon thread."""
     collect_all_cities()
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(collect_all_cities, "interval", minutes=15)
+    scheduler.start()
+    logger.info("Background scheduler started")
 
+def start_scheduler():
+    """Used when running manually from terminal."""
+    init_db()
     scheduler = BlockingScheduler()
-    scheduler.add_job(
-        collect_all_cities,
-        "interval",
-        minutes=15
-    )
+    scheduler.add_job(collect_all_cities, "interval", minutes=15)
+    collect_all_cities()
     logger.info("Scheduler running — press Ctrl+C to stop")
     scheduler.start()
 
