@@ -26,13 +26,22 @@ CORE_CITIES = ["Lucknow", "Mumbai", "Bengaluru", "Delhi"]
 def collect_city_data(city_name: str):
     logger.info(f"Starting collection for {city_name}")
 
-    raw_weather = fetch_weather(city_name)
+    from src.fetchers.weather import geocode_city, fetch_weather_latlon
+    geo = geocode_city(city_name)
+    if geo:
+        lat, lon, _ = geo
+        raw_weather = fetch_weather_latlon(lat, lon)
+    else:
+        raw_weather = fetch_weather(city_name)
+        if raw_weather is None:
+            logger.warning(f"Weather fetch failed for {city_name} — skipping")
+            return
+        lat = raw_weather["coord"]["lat"]
+        lon = raw_weather["coord"]["lon"]
+
     if raw_weather is None:
         logger.warning(f"Weather fetch failed for {city_name} — skipping")
         return
-
-    lat = raw_weather["coord"]["lat"]
-    lon = raw_weather["coord"]["lon"]
 
     city_id = get_or_create_city(city_name, lat, lon)
 
