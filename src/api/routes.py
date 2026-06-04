@@ -4,6 +4,8 @@ from src.api.cache import get_cached, set_cached
 from src.api.city_service import fetch_and_save_city
 from src.ml.forecast import forecast_city
 from src.ml.similarity import get_similar_cities
+from src.scoring.engine import get_weights, set_weights
+import os
 from src.utils.database import (
     get_all_cities,
     get_latest_snapshot,
@@ -21,8 +23,7 @@ from fastapi import APIRouter, HTTPException, Query
 from src.utils.aqi import pm25_to_aqi, aqi_category
 from sqlalchemy import text
 from src.utils.database import engine
-from src.scoring.engine import get_weights, set_weights
-import os
+
 
 
 import logging
