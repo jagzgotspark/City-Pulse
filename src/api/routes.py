@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Query
 from src.utils.aqi import pm25_to_aqi, aqi_category
 from sqlalchemy import text
 from src.utils.database import engine
+from src.ml.similarity import get_similar_cities
 
 import logging
 logger = logging.getLogger(__name__)
@@ -245,3 +246,13 @@ def get_neighbourhood(city_name: str):
         "city": city_name,
         "neighbourhoods": data
     }
+
+@router.get("/similar/{city_name}")
+def get_similar(city_name: str):
+    results = get_similar_cities(city_name)
+    if results is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Not enough city data to compute similarity for {city_name}."
+        )
+    return {"city": city_name, "similar": results}
