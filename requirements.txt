@@ -48,3 +48,4 @@ tzlocal==5.3.1
 urllib3==2.7.0
 uvicorn==0.47.0
 faiss-cpu
+redis
