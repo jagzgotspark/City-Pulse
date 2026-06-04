@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-CITIES = ["Lucknow", "Mumbai", "Bengaluru", "Delhi"]
+CORE_CITIES = ["Lucknow", "Mumbai", "Bengaluru", "Delhi"]
 
 def collect_city_data(city_name: str):
     logger.info(f"Starting collection for {city_name}")
@@ -73,8 +73,11 @@ def collect_city_data(city_name: str):
     })
 
 def collect_all_cities():
-    logger.info(f"=== Collection run started at {datetime.now(timezone.utc)} ===")
-    for city in CITIES:
+    from src.utils.database import get_all_cities
+    all_cities = get_all_cities()
+    city_names = [c["name"] for c in all_cities] if all_cities else CORE_CITIES
+    logger.info(f"=== Collection run started for {len(city_names)} cities ===")
+    for city in city_names:
         collect_city_data(city)
     collect_all_neighbourhoods()
     logger.info("=== Collection run complete ===")
