@@ -45,6 +45,8 @@ def get_similar_cities(city_name: str, top_n: int = 3) -> list | None:
         if name == city_name:
             continue
         row = rows[idx]
+        if float(1 / (1 + dist)) < 0.5:
+            continue
         results.append({
             "city": name,
             "similarity_score": round(float(1 / (1 + dist)), 3),
