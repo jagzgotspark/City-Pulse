@@ -88,9 +88,24 @@ def init_db():
             )
         """))
         conn.execute(text("""
-            CREATE INDEX IF NOT EXISTS idx_neighbourhood_city_time
-            ON neighbourhood_snapshots (city_name, timestamp DESC)
+            CREATE TABLE IF NOT EXISTS city_vectors (
+                id SERIAL PRIMARY KEY,
+                city_name VARCHAR(100) NOT NULL,
+                timestamp TIMESTAMPTZ NOT NULL,
+                pulse_score FLOAT,
+                weather_score FLOAT,
+                air_score FLOAT,
+                temperature FLOAT,
+                humidity FLOAT,
+                aqi INTEGER,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
         """))
+        conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_city_vectors_city_time
+            ON city_vectors (city_name, timestamp DESC)
+        """))
+
         conn.commit()
         print("Database initialised with new schema")
 
@@ -294,4 +309,29 @@ def get_neighbourhood_data(city_name: str) -> list:
             WHERE city_name = :city_name
             ORDER BY neighbourhood, timestamp DESC
         """), {"city_name": city_name})
+        return [dict(row._mapping) for row in result]
+    
+def save_city_vector(data: dict):
+    with engine.connect() as conn:
+        conn.execute(text("""
+            INSERT INTO city_vectors
+                (city_name, timestamp, pulse_score, weather_score,
+                 air_score, temperature, humidity, aqi)
+            VALUES
+                (:city_name, :timestamp, :pulse_score, :weather_score,
+                 :air_score, :temperature, :humidity, :aqi)
+        """), data)
+        conn.commit()
+
+
+def get_all_city_vectors() -> list:
+    """Returns the latest vector per city."""
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT DISTINCT ON (city_name)
+                city_name, timestamp, pulse_score, weather_score,
+                air_score, temperature, humidity, aqi
+            FROM city_vectors
+            ORDER BY city_name, timestamp DESC
+        """))
         return [dict(row._mapping) for row in result]

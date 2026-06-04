@@ -11,7 +11,7 @@ from src.fetchers.neighbourhood import collect_all_neighbourhoods
 from src.utils.transform import clean_weather, clean_air_quality
 from src.utils.database import (
     init_db, get_or_create_city,
-    save_weather_snapshot, save_air_snapshot
+    save_weather_snapshot, save_air_snapshot, save_city_vector
 )
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -61,6 +61,16 @@ def collect_city_data(city_name: str):
 
     save_pulse_score(city_id, pulse)
     logger.info(f"Pulse score for {city_name}: {pulse['score']}/100")    
+    save_city_vector({
+        "city_name": city_name,
+        "timestamp": weather_data["timestamp"],
+        "pulse_score": pulse["score"],
+        "weather_score": pulse["weather_score"],
+        "air_score": pulse["air_score"],
+        "temperature": weather_data.get("temperature"),
+        "humidity": weather_data.get("humidity"),
+        "aqi": air_data.get("aqi") if raw_air else None
+    })
 
 def collect_all_cities():
     logger.info(f"=== Collection run started at {datetime.now(timezone.utc)} ===")
