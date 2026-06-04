@@ -15,6 +15,22 @@ Computes a pulse score (0-100) for a city based on:
 Weights sum to 1.0. Scores are clamped to [0, 100].
 """
 
+_weights = {
+    "weather": 0.50,
+    "air": 0.35,
+    "events": 0.15
+}
+
+def get_weights() -> dict:
+    return dict(_weights)
+
+def set_weights(weather: float, air: float, events: float):
+    total = weather + air + events
+    if abs(total - 1.0) > 0.01:
+        raise ValueError(f"Weights must sum to 1.0, got {total}")
+    _weights["weather"] = round(weather, 2)
+    _weights["air"] = round(air, 2)
+    _weights["events"] = round(events, 2)
 
 
 def score_weather(
@@ -174,9 +190,9 @@ def compute_pulse(
     # WEIGHTS
     # -----------------------------
 
-    WEATHER_WEIGHT = 0.50
-    AIR_WEIGHT = 0.35
-    EVENTS_WEIGHT = 0.15
+    WEATHER_WEIGHT = _weights["weather"]
+    AIR_WEIGHT = _weights["air"]
+    EVENTS_WEIGHT = _weights["events"]
 
     final_score = (
         weather_score * WEATHER_WEIGHT +

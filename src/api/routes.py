@@ -21,6 +21,8 @@ from fastapi import APIRouter, HTTPException, Query
 from src.utils.aqi import pm25_to_aqi, aqi_category
 from sqlalchemy import text
 from src.utils.database import engine
+from src.scoring.engine import get_weights, set_weights
+import os
 
 
 import logging
@@ -257,3 +259,54 @@ def get_similar(city_name: str):
             detail=f"Not enough city data to compute similarity for {city_name}."
         )
     return {"city": city_name, "similar": results}
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "citypulse123")
+
+@router.get("/admin/weights")
+def admin_get_weights(password: str = Query(...)):
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return get_weights()
+
+@router.post("/admin/weights")
+def admin_set_weights(
+    password: str = Query(...),
+    weather: float = Query(..., ge=0.0, le=1.0),
+    air: float = Query(..., ge=0.0, le=1.0),
+    events: float = Query(..., ge=0.0, le=1.0)
+):
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        set_weights(weather, air, events)
+        return {"status": "updated", "weights": get_weights()}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/admin/stats")
+def admin_stats(password: str = Query(...)):
+    if password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    with engine.connect() as conn:
+        city_stats = conn.execute(text("""
+            SELECT c.name,
+                COUNT(p.id) as pulse_count,
+                COUNT(w.id) as weather_count
+            FROM cities c
+            LEFT JOIN pulse_scores p ON p.city_id = c.id
+            LEFT JOIN weather_snapshots w ON w.city_id = c.id
+            GROUP BY c.name
+            ORDER BY pulse_count DESC
+        """)).fetchall()
+        total_snapshots = conn.execute(text(
+            "SELECT COUNT(*) FROM weather_snapshots"
+        )).scalar()
+        total_pulse = conn.execute(text(
+            "SELECT COUNT(*) FROM pulse_scores"
+        )).scalar()
+    return {
+        "total_weather_snapshots": total_snapshots,
+        "total_pulse_scores": total_pulse,
+        "current_weights": get_weights(),
+        "cities": [dict(r._mapping) for r in city_stats]
+    }
