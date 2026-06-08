@@ -90,6 +90,35 @@ def collect_all_cities():
         collect_city_data(city)
     collect_all_neighbourhoods()
     logger.info("=== Collection run complete ===")
+    _broadcast_dashboard()
+
+def _broadcast_dashboard():
+    try:
+        from src.api.main import connected_clients, broadcast
+        from src.utils.database import get_all_cities, get_latest_pulse, get_latest_snapshot
+        import asyncio
+        cities = get_all_cities()
+        result = []
+        for city in cities:
+            pulse = get_latest_pulse(city["name"])
+            snapshot = get_latest_snapshot(city["name"])
+            if pulse and snapshot:
+                result.append({
+                    "city": city["name"],
+                    "lat": city["lat"],
+                    "lon": city["lon"],
+                    "pulse_score": pulse["score"],
+                    "temperature": snapshot["temperature"],
+                    "condition": snapshot["condition"],
+                    "aqi": snapshot["aqi"],
+                })
+        if connected_clients:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(broadcast({"type": "dashboard_update", "cities": result}))
+            loop.close()
+            logger.info(f"Broadcasted to {len(connected_clients)} clients")
+    except Exception as e:
+        logger.warning(f"Broadcast failed: {e}")
     
 
 def run_scheduler():
