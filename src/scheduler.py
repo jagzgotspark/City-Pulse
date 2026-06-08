@@ -94,7 +94,7 @@ def collect_all_cities():
 
 def _broadcast_dashboard():
     try:
-        from src.api.websocket.py import connected_clients, broadcast
+        from src.api.websocket import connected_clients, broadcast
         from src.utils.database import get_all_cities, get_latest_pulse, get_latest_snapshot
         import asyncio
         cities = get_all_cities()
