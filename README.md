@@ -1,291 +1,167 @@
-# 🌆 City Pulse
+# City Pulse
 
-A real-time city analytics platform that transforms weather, air quality, and event data into a single Pulse Score (0–100), helping users understand how vibrant, comfortable, and active a city feels at any moment.
+**Live city energy scores across India — real-time, every 15 minutes.**
 
-Built using FastAPI, PostgreSQL, React, machine learning forecasting, and AI-generated city mood summaries.
-
----
-
-## 🚀 Live Demo
-
-**Frontend:** https://project-s9n4g.vercel.app
-
-**Backend API:** https://city-pulse-production-5856.up.railway.app
+[**Live Demo →**](https://project-s9n4g.vercel.app) · [API](https://city-pulse-production-5856.up.railway.app)
 
 ---
 
-## ✨ Features
+## What it does
 
-- Real-time weather monitoring
-- Air quality tracking and AQI analysis
-- Event density monitoring
-- Custom Pulse Score algorithm
-- AI-generated city mood summaries using Llama 3
-- Historical trend analysis
-- 24-hour forecasting with Facebook Prophet
-- Interactive city search
-- Automated data collection every 15 minutes
-- PostgreSQL time-series storage
+City Pulse aggregates weather, air quality, and event data for Indian cities into a single **pulse score** (0–100) — a composite measure of how liveable and energetic a city feels right now. Scores update every 15 minutes via a background scheduler running 24/7 on Railway.
+
+You can search any city in India, compare cities head-to-head, drill into neighbourhood-level scores, see a 24-hour Prophet forecast, and share a city's vibe as a downloadable card.
 
 ---
 
-## 🏗️ System Architecture
+## Architecture
 
-```text
-                    ┌──────────────────┐
-                    │  OpenWeather API │
-                    └─────────┬────────┘
-                              │
-                    ┌─────────▼────────┐
-                    │ Air Quality API  │
-                    └─────────┬────────┘
-                              │
-                    ┌─────────▼────────┐
-                    │   PredictHQ API  │
-                    └─────────┬────────┘
-                              │
-
-                    ┌─────────▼────────┐
-                    │ APScheduler Job  │
-                    │ (Every 15 mins)  │
-                    └─────────┬────────┘
-                              │
-
-                    ┌─────────▼────────┐
-                    │ Data Processing  │
-                    │ & Transformation │
-                    └─────────┬────────┘
-                              │
-
-                    ┌─────────▼────────┐
-                    │ Pulse Score      │
-                    │ Calculation      │
-                    └─────────┬────────┘
-                              │
-
-                    ┌─────────▼────────┐
-                    │ PostgreSQL       │
-                    │ Time-Series DB   │
-                    └─────────┬────────┘
-                              │
-
-                    ┌─────────▼────────┐
-                    │ FastAPI Backend  │
-                    └─────────┬────────┘
-                              │
-
-          ┌───────────────────▼───────────────────┐
-          │ React Dashboard + Charts + Maps + AI │
-          └───────────────────────────────────────┘
+```
+┌─────────────────────────────────────────────────────────┐
+│                        Frontend                          │
+│         React + Leaflet + Recharts (Vercel)              │
+│   Leaderboard · Map · Cards · Trends · Forecasts        │
+└────────────────────────┬────────────────────────────────┘
+                         │ REST + WebSocket
+┌────────────────────────▼────────────────────────────────┐
+│                      FastAPI Backend                     │
+│                      (Railway)                           │
+│                                                          │
+│  ┌──────────────┐  ┌─────────────┐  ┌────────────────┐  │
+│  │  Scheduler   │  │   Routes    │  │   WebSocket    │  │
+│  │ APScheduler  │  │  11 endpoints│  │  /ws/dashboard │  │
+│  │ every 15 min │  │             │  │  push on update│  │
+│  └──────┬───────┘  └──────┬──────┘  └────────────────┘  │
+│         │                 │                              │
+│  ┌──────▼─────────────────▼──────────────────────────┐  │
+│  │              Data Layer                            │  │
+│  │  PostgreSQL · Redis cache · FAISS vectors          │  │
+│  └────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────┐
+│                   External APIs                          │
+│   OpenWeatherMap · Ticketmaster · Groq (Llama3)          │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🛠 Tech Stack
+## Tech stack
 
-### Backend
-
-- Python
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- APScheduler
-
-### Frontend
-
-- React
-- Axios
-- Recharts
-- Leaflet
-
-### AI & Machine Learning
-
-- Groq API (Llama 3)
-- Facebook Prophet
-
-### Deployment
-
-- Railway
-- Vercel
+| Layer | Technology |
+|---|---|
+| Backend | Python, FastAPI, SQLAlchemy |
+| Scheduling | APScheduler (background thread inside FastAPI) |
+| Database | PostgreSQL |
+| Cache | Redis |
+| ML | Facebook Prophet (forecasting), FAISS (similarity search) |
+| AI summaries | Groq API — Llama3 |
+| Frontend | React, Recharts, Leaflet |
+| Deploy | Railway (backend + DB + Redis), Vercel (frontend) |
 
 ---
 
-## 📊 Pulse Score Algorithm
+## Key technical decisions
 
-The Pulse Score is a weighted combination of multiple city indicators.
+**Why APScheduler inside FastAPI instead of a separate cron service?**
+Railway's free tier doesn't support cron jobs. Running APScheduler as a daemon thread inside the FastAPI process means the scheduler stays alive as long as the web service does — zero extra services, zero extra cost. The tradeoff is that a crash of the web process kills the scheduler too, but Railway's auto-restart handles that.
 
-### Weather Score
+**Why FAISS for similar city search instead of a SQL query?**
+SQL distance queries on 5-dimensional vectors (`WHERE ABS(pulse_score - x) < threshold AND ...`) don't scale and don't capture multi-dimensional proximity well. FAISS does L2 nearest-neighbour search across all city vectors in microseconds, and the result ("Mumbai and Bengaluru have a similar vibe right now") is meaningfully more accurate than a threshold-based approach.
 
-Factors considered:
+**Why Redis instead of in-memory caching?**
+The original cache was a Python dict — it reset on every Railway restart. Groq LLM summaries cost API calls and take ~2 seconds each. With 15 cities generating summaries every 30 minutes, cold starts were slow and expensive. Redis survives restarts, is shared across requests, and reduces Groq calls by ~80% in practice.
 
-- Temperature comfort
-- Humidity
-- Wind speed
-- Weather conditions
+**Why Prophet for forecasting instead of a simpler model?**
+Prophet handles the seasonality patterns in city data (daily temperature cycles, rush hour activity) without requiring manual feature engineering. It also produces 80% confidence intervals out of the box, which makes the forecast chart more honest — users see the uncertainty, not just a line.
 
-### Air Quality Score
+**Why OWM geocoding before weather fetch?**
+OpenWeatherMap's city name search has ambiguity issues — "Manali" returns Manali, Tamil Nadu instead of Manali, Himachal Pradesh. Using OWM's geocoding API first (`/geo/1.0/direct`) returns ranked results with state metadata, so we can resolve to the correct coordinates before fetching weather. All weather is then fetched by lat/lon, not city name.
 
-Factors considered:
+---
 
-- AQI
-- PM2.5 concentration
-- Pollution severity
+## Features
 
-### Event Score
+- **Live leaderboard** — all tracked cities ranked by pulse score, updating every 15 minutes
+- **Neighbourhood drill-down** — zoom into a city on the map to see pulse scores by area (Hazratganj vs Gomti Nagar in Lucknow, Bandra vs Colaba in Mumbai)
+- **Similar city search** — FAISS embedding similarity: "which cities feel like Bengaluru right now?"
+- **24h Prophet forecast** — ML model trained on historical pulse scores with confidence intervals
+- **City vs City comparison** — head-to-head on pulse score, temperature, AQI, weather score, air score
+- **AI mood summaries** — Groq Llama3 generates a one-line vibe description per city
+- **Real AQI** — EPA PM2.5 formula applied to raw sensor data, not OWM's 1–5 index
+- **Admin dashboard** — password-gated page to tune scoring weights live and monitor data collection
+- **PWA** — installable on mobile, service worker for offline fallback
+- **WebSocket push** — dashboard refreshes automatically when new data arrives, no polling
+- **Shareable city card** — Canvas API generates a downloadable PNG of any city's pulse
 
-Factors considered:
+---
 
-- Number of local events
-- City activity level
+## Scoring algorithm
 
-### Final Score
-
-```text
-Pulse Score =
-(Weather Score × Weight)
-+ (Air Quality Score × Weight)
-+ (Event Score × Weight)
+```python
+pulse_score = (
+    weather_score  * 0.50 +   # temperature comfort, humidity, condition, wind
+    air_score      * 0.35 +   # PM2.5 → EPA AQI → 0-100 mapping
+    events_score   * 0.15     # active event count via Ticketmaster API
+)
+# hard cap: AQI 5 → max score 45, AQI 4 → max score 65
 ```
 
-Scores are normalized and constrained between 0 and 100.
+Weights are tunable live via the admin dashboard without redeployment.
 
 ---
 
-## 🤖 AI Mood Summaries
+## API endpoints
 
-City Pulse uses Llama 3 through the Groq API to generate natural-language descriptions of a city's current atmosphere.
-
-Example:
-
-> "Lucknow feels lively this evening with pleasant weather, moderate air quality, and several ongoing events contributing to a vibrant city vibe."
-
-To reduce latency and API costs, generated summaries are cached for 30 minutes.
-
----
-
-## 📈 Forecasting
-
-The platform uses Facebook Prophet to forecast city Pulse Scores for the next 24 hours.
-
-Features:
-
-- Daily seasonality detection
-- Confidence intervals
-- Historical trend learning
-- Cached forecasts for faster responses
+```
+GET  /api/dashboard              All cities with scores, AQI, summaries
+GET  /api/pulse/{city}           Single city latest data
+GET  /api/search/{city}          On-demand fetch + persist any city
+GET  /api/trend/{city}           Hourly pulse trend (1–30 days)
+GET  /api/forecast/{city}        Prophet 24h forecast
+GET  /api/neighbourhood/{city}   Grid-level pulse scores within a city
+GET  /api/similar/{city}         FAISS nearest-neighbour cities
+GET  /api/comparison             7-day city ranking
+GET  /api/admin/weights          Current scoring weights (password-gated)
+POST /api/admin/weights          Update scoring weights live
+GET  /api/admin/stats            Collection stats and data point counts
+WS   /ws/dashboard               WebSocket — push on each collection run
+```
 
 ---
 
-## 🗄 Database Schema
-
-### cities
-
-Stores tracked cities.
-
-### weather_snapshots
-
-Stores weather observations collected every 15 minutes.
-
-### air_quality_snapshots
-
-Stores AQI and pollutant measurements.
-
-### events_snapshots
-
-Stores event activity data.
-
-### pulse_scores
-
-Stores calculated Pulse Scores and AI summaries.
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description |
-|----------|----------|-------------|
-| GET | `/api/dashboard` | All tracked cities |
-| GET | `/api/pulse/{city}` | Latest city data |
-| GET | `/api/search/{city}` | Search and save a city |
-| GET | `/api/trend/{city}` | Historical trends |
-| GET | `/api/history/{city}` | Weather and AQI history |
-| GET | `/api/daily/{city}` | Daily summary |
-| GET | `/api/comparison` | City rankings |
-| GET | `/api/forecast/{city}` | 24-hour forecast |
-| GET | `/api/forecast` | Forecasts for all cities |
-
----
-
-## ⚙️ Local Setup
-
-### Clone Repository
+## Local setup
 
 ```bash
-git clone https://github.com/jagzgotspark/City-Pulse.git
+git clone https://github.com/jagzgotspark/City-Pulse
 cd City-Pulse
-```
-
-### Create Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-### Install Dependencies
-
-```bash
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
 
-### Configure Environment Variables
+# copy and fill in your keys
+cp .env.example .env
 
-Create a `.env` file:
-
-```env
-OPENWEATHER_API_KEY=your_key
-PREDICTHQ_TOKEN=your_token
-GROQ_API_KEY=your_key
-DATABASE_URL=your_database_url
-```
-
-### Start Backend
-
-```bash
+# init DB and start scheduler + server
 uvicorn src.api.main:app --reload
 ```
 
-### Start Scheduler
+Required env vars: `OPENWEATHER_API_KEY`, `GROQ_API_KEY`, `TICKETMASTER_API_KEY`, `DATABASE_URL`, `REDIS_URL`
 
-```bash
-python3 -m src.scheduler
+---
+
+## Project structure
+
+```
+src/
+  api/          FastAPI app, routes, cache, WebSocket, LLM
+  fetchers/     Weather, air quality, events, neighbourhood ingestion
+  ml/           Prophet forecasting, FAISS similarity
+  scoring/      Weighted pulse score engine
+  utils/        Database functions, data transforms, AQI formula
+  scheduler.py  APScheduler — collects all cities every 15 min
 ```
 
 ---
 
-## 🎯 Engineering Challenges Solved
-
-- Designed a weighted scoring algorithm that models city livability and activity
-- Built an automated multi-source ingestion pipeline
-- Managed time-series analytics using PostgreSQL
-- Integrated AI-generated summaries while minimizing latency through caching
-- Implemented machine learning forecasting on continuously collected city data
-- Built on-demand city discovery and persistence
-
----
-
-## 📌 Future Improvements
-
-- Neighborhood-level analytics
-- More environmental indicators
-- User personalization
-- Advanced forecasting models
-- Real-time alerting system
-
----
-
-## 👩‍💻 Author
-
-**Jagriti Singh**
-
-Built as a full-stack data engineering, analytics, and machine learning project focused on transforming raw city data into meaningful real-time insights.
+Built by Jagriti Singh · 3rd year CSE-AIML · VIT Chennai
