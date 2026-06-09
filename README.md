@@ -37,26 +37,26 @@ Built using FastAPI, PostgreSQL, React, Redis, FAISS, Prophet forecasting, and A
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                       Frontend                           │
-│         React + Leaflet + Recharts (Vercel)              │
+│                       Frontend                          │
+│         React + Leaflet + Recharts (Vercel)             │
 │   Leaderboard · Map · Cards · Trends · Forecasts        │
 └────────────────────────┬────────────────────────────────┘
                          │ REST + WebSocket
 ┌────────────────────────▼────────────────────────────────┐
-│                    FastAPI Backend (Railway)              │
-│                                                          │
+│                    FastAPI Backend (Railway)            │
+│                                                         │
 │  ┌──────────────┐  ┌─────────────┐  ┌────────────────┐  │
 │  │  APScheduler │  │  11 Routes  │  │   WebSocket    │  │
 │  │ every 15 min │  │             │  │  push on update│  │
 │  └──────┬───────┘  └──────┬──────┘  └────────────────┘  │
-│         │                 │                              │
+│         │                 │                             │
 │  ┌──────▼─────────────────▼──────────────────────────┐  │
-│  │   PostgreSQL · Redis cache · FAISS vectors         │  │
-│  └────────────────────────────────────────────────────┘  │
+│  │   PostgreSQL · Redis cache · FAISS vectors        │  │
+│  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────┐
-│          OpenWeatherMap · Ticketmaster · Groq            │
+│          OpenWeatherMap · Ticketmaster · Groq           │
 └─────────────────────────────────────────────────────────┘
 ```
 
